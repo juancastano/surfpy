@@ -3,6 +3,7 @@ import json
 import datetime
 import bisect
 import time
+
 try:
     import requests
     from requests.adapters import HTTPAdapter
@@ -28,6 +29,7 @@ def ldis(period, depth):
     err = float(1.0)
 
     OMEGA = float(2 * math.pi / period)
+
     D = float(math.pow(OMEGA, 2) * depth / gravity)
 
     Xo = 0.0
@@ -57,7 +59,9 @@ def ldis(period, depth):
     return 2 * math.pi * depth / Xf
 
 
-def breaking_characteristics(period, incident_angle, deep_wave_height, beach_slope, water_depth):
+def breaking_characteristics(
+    period, incident_angle, deep_wave_height, beach_slope, water_depth
+):
     # Solves for the Breaking Wave Height and Breaking Water Depth given a swell and beach conditions.
     # All units are metric and gravity is 9.81.
     gravity = 9.81
@@ -71,16 +75,17 @@ def breaking_characteristics(period, incident_angle, deep_wave_height, beach_slo
     celerity = wavelength / period
     theta = math.asin(celerity * ((math.sin(incident_angle_rad)) / initial_celerity))
     refraction_coeff = math.sqrt(math.cos(incident_angle_rad) / math.cos(theta))
-    a = 43.8 * (1 - math.exp(-19*beach_slope))
-    b = 1.56 / (1 + math.exp(-19.5*beach_slope))
+    a = 43.8 * (1 - math.exp(-19 * beach_slope))
+    b = 1.56 / (1 + math.exp(-19.5 * beach_slope))
+
     deep_refracted_wave_height = refraction_coeff * deep_wave_height
-    w = 0.56 * math.pow(deep_refracted_wave_height/deep_wavelength, -0.2)
+    w = 0.56 * math.pow(deep_refracted_wave_height / deep_wavelength, -0.2)
 
     # Find the breaking wave height!
     breaking_wave_height = w * deep_refracted_wave_height
 
     # Solve for the breaking depth
-    K = b - a*(breaking_wave_height/(gravity*math.pow(period, 2)))
+    K = b - a * (breaking_wave_height / (gravity * math.pow(period, 2)))
     breaking_water_depth = breaking_wave_height / K
 
     return breaking_wave_height, breaking_water_depth
@@ -91,8 +96,12 @@ def refraction_coefficient(wavelength, depth, incident_angle):
     # inputs on a straight beach with parrellel bottom contours
     incident_angle_rad = math.radians(incident_angle)
     wavenumber = (2.0 * math.pi) / wavelength
-    shallow_incident_angle_rad = math.asin(math.sin(incident_angle_rad) * math.tanh(wavenumber*depth))
-    refraction_coeff = math.sqrt(math.cos(incident_angle_rad) / math.cos(shallow_incident_angle_rad))
+    shallow_incident_angle_rad = math.asin(
+        math.sin(incident_angle_rad) * math.tanh(wavenumber * depth)
+    )
+    refraction_coeff = math.sqrt(
+        math.cos(incident_angle_rad) / math.cos(shallow_incident_angle_rad)
+    )
     shallow_incident_angle = shallow_incident_angle_rad * 180 / math.pi
     return refraction_coeff, shallow_incident_angle
 
@@ -103,14 +112,18 @@ def shoaling_coefficient(wavelength, depth):
 
     # Basic dispersion relationships
     wavenumber = (2.0 * math.pi) / wavelength
-    deep_wavelength = wavelength / math.tanh(wavenumber*depth)
+    deep_wavelength = wavelength / math.tanh(wavenumber * depth)
     w = math.sqrt(wavenumber * gravity)
     period = (2.0 * math.pi) / w
 
     # Celerity
     initial_celerity = deep_wavelength / period
-    celerity = initial_celerity * math.tanh(wavenumber*depth)
-    group_velocity = 0.5 * celerity * (1 + ((2 * wavenumber * depth) / (math.sinh(2 * wavenumber * depth))))
+    celerity = initial_celerity * math.tanh(wavenumber * depth)
+    group_velocity = (
+        0.5
+        * celerity
+        * (1 + ((2 * wavenumber * depth) / (math.sinh(2 * wavenumber * depth))))
+    )
 
     return math.sqrt(initial_celerity / (2 * group_velocity))
 
@@ -132,28 +145,28 @@ def steepness_coeff_with_moments(zero_moment, second_moment):
 def steepness(significant_wave_height, dominant_period):
     val = math.exp(-3.3 * math.log(dominant_period))
     if significant_wave_height > (val / 250.0):
-        return 'Very Steep'
+        return "Very Steep"
     elif significant_wave_height > (val / 500.0):
-        return 'Steep'
+        return "Steep"
     elif significant_wave_height > (val / 1000.0):
-        return 'Average'
+        return "Average"
     else:
-        return 'Swell'
+        return "Swell"
 
 
-def peakdetect(v, delta, x = None):
+def peakdetect(v, delta, x=None):
     """
     Converted from MATLAB script at http://billauer.co.il/peakdet.html
-    
+
     Returns two arrays
-    
+
     function [maxtab, mintab]=peakdet(v, delta, x)
     %PEAKDET Detect peaks in a vector
     %        [MAXTAB, MINTAB] = PEAKDET(V, DELTA) finds the local
     %        maxima and minima ("peaks") in the vector V.
     %        MAXTAB and MINTAB consists of two columns. Column 1
     %        contains indices in V, and column 2 the found values.
-    %      
+    %
     %        With [MAXTAB, MINTAB] = PEAKDET(V, DELTA, X) the indices
     %        in MAXTAB and MINTAB are replaced with the corresponding
     %        X-values.
@@ -161,24 +174,24 @@ def peakdetect(v, delta, x = None):
     %        A point is considered a maximum peak if it has the maximal
     %        value, and was preceded (to the left) by a value lower by
     %        DELTA.
-    
+
     % Eli Billauer, 3.4.05 (Explicitly not copyrighted).
     % This function is released to the public domain; Any use is allowed.
-    
+
     """
     min_indexes = []
     min_values = []
     max_indexes = []
     max_values = []
-       
+
     if x is None:
         x = range(len(v))
-    
-    mn, mx = float('inf'), -float('inf')
-    mnpos, mxpos = float('nan'), float('nan')
-    
+
+    mn, mx = float("inf"), -float("inf")
+    mnpos, mxpos = float("nan"), float("nan")
+
     lookformax = True
-    
+
     for i in range(len(v)):
         this = v[i]
         if this > mx:
@@ -187,16 +200,16 @@ def peakdetect(v, delta, x = None):
         if this < mn:
             mn = this
             mnpos = x[i]
-        
+
         if lookformax:
-            if this < mx-delta:
+            if this < mx - delta:
                 max_indexes.append(mxpos)
                 max_values.append(mx)
                 mn = this
                 mnpos = x[i]
                 lookformax = False
         else:
-            if this > mn+delta:
+            if this > mn + delta:
                 min_indexes.append(mnpos)
                 min_values.append(mn)
                 mx = this
@@ -207,7 +220,7 @@ def peakdetect(v, delta, x = None):
 
 
 def parse_float(raw_value):
-    value = float('nan')
+    value = float("nan")
     try:
         value = float(raw_value)
     except:
@@ -216,7 +229,7 @@ def parse_float(raw_value):
 
 
 def parse_int(raw_value):
-    value = int('nan')
+    value = int("nan")
     try:
         value = int(raw_value)
     except:
@@ -233,7 +246,7 @@ def simple_serialize(obj):
 
 
 def dump_json(obj):
-    return json.dumps(obj, default=simple_serialize).replace('NaN', 'null')
+    return json.dumps(obj, default=simple_serialize).replace("NaN", "null")
 
 
 def download_data(url):
@@ -242,7 +255,7 @@ def download_data(url):
     try:
         response = requests.get(url)
     except:
-        print('Failed to download ' + url)
+        print("Failed to download " + url)
         return False
     if not len(response.content):
         return False
@@ -251,13 +264,15 @@ def download_data(url):
 
 def retry_session(retries=1):
     session = requests.Session()
-    retries = Retry(total=retries,
-                backoff_factor=0.1,
-                status_forcelist=[500, 502, 503, 504],
-                method_whitelist=frozenset(['GET', 'POST']))
+    retries = Retry(
+        total=retries,
+        backoff_factor=0.1,
+        status_forcelist=[500, 502, 503, 504],
+        method_whitelist=frozenset(["GET", "POST"]),
+    )
 
-    session.mount('https://', HTTPAdapter(max_retries=retries))
-    session.mount('http://', HTTPAdapter(max_retries=retries))
+    session.mount("https://", HTTPAdapter(max_retries=retries))
+    session.mount("http://", HTTPAdapter(max_retries=retries))
     return session
 
 
@@ -269,7 +284,7 @@ def download_with_retry(url):
         session = retry_session(retries=2)
         response = session.get(url, timeout=5)
     except Exception as e:
-        print('Failed to download ' + url + ': ' + str(e))
+        print("Failed to download " + url + ": " + str(e))
         return None
     if not len(response.content):
         return None
@@ -282,4 +297,4 @@ def closest_index(in_list, val):
         return 0
     if pos == len(in_list):
         return -1
-    return pos-1
+    return pos - 1
